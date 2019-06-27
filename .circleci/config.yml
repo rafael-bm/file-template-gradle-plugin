@@ -1,0 +1,80 @@
+version: 2.1
+
+executors:
+  jdk-executor:
+    docker:
+      - image: circleci/openjdk:11-jdk
+    working_directory: "~/build"
+    environment:
+
+jobs:
+  build:
+    executor: jdk-executor
+    environment:
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "build.gradle.kts" }}
+          - v1-dependencies-
+      - run:
+          name: Downloading Gradle depedencies
+          command: gradle dependencies
+      - save_cache:
+          paths:
+          - ~/.gradle
+          key: v1-dependencies-{{ checksum "build.gradle.kts" }}
+      - run:
+          name: Running Junits Tests
+          command: gradle test
+      - run:
+          name: Building Java artifact
+          command: gradle clean build
+      - run:
+          name: Current Version
+          command: gradle currentVersion
+  deploy:
+    executor: jdk-executor
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "d3:0c:ab:ca:35:53:93:cc:fb:10:32:c6:e8:5b:b1:73"
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "build.gradle.kts" }}
+            - v1-dependencies-
+      - run:
+          name: Downloading Gradle depedencies
+          command: gradle dependencies
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: v1-dependencies-{{ checksum "build.gradle.kts" }}
+      - run:
+          name: Running SCM
+          command: gradle release -Prelease.pushTagsOnly -Prelease.disableUncommittedCheck -Prelease.disableChecks
+      - run:
+          name: New Version
+          command: gradle cV
+      - run:
+          name: Building Java artifact
+          command: gradle clean build
+      - run:
+          name: Publishing Plugin to gradle portal
+          command: gradle publishPlugins -Pgradle.publish.key=$GRADLE_KEY -Pgradle.publish.secret=$GRADLE_SECRET
+
+workflows:
+  version: 2.1
+  build_and_deploy:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only: /.*/
+      - deploy:
+          filters:
+            branches:
+              only: master
+          requires:
+            - build
