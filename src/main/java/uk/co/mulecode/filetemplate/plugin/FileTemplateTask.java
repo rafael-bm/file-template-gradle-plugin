@@ -1,19 +1,17 @@
 package uk.co.mulecode.filetemplate.plugin;
 
-import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
-import uk.co.mulecode.filetemplate.file.MulecodeFileUtils;
-import uk.co.mulecode.filetemplate.interpreter.FileInterpreter;
-import uk.co.mulecode.filetemplate.interpreter.FileInterpreterFactory;
 import uk.co.mulecode.filetemplate.plugin.model.TemplateConfig;
 import uk.co.mulecode.filetemplate.plugin.model.TemplateData;
+import uk.co.mulecode.filetemplate.property.PropertySet;
 import uk.co.mulecode.filetemplate.template.TemplateService;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static java.util.Objects.nonNull;
 
 public class FileTemplateTask extends DefaultTask {
 
@@ -29,63 +27,17 @@ public class FileTemplateTask extends DefaultTask {
                 TemplateConfig.class
         );
 
-        var valueFile = loadValueFile(config);
-
-        var fileConfigs = loadConfigDetails(config);
-
-        getLogger().info("Template configurations size: {}", fileConfigs.size());
-
-        var templateService = new TemplateService(valueFile);
-        templateService.templateFile(fileConfigs);
-    }
-
-    private List<TemplateData> loadConfigDetails(TemplateConfig config) {
-
-        List<TemplateData> fileConfigs;
-
-        if (!getConfigDetails().isEmpty()) {
-
-            fileConfigs = getConfigDetails();
-
-        } else {
-
-            fileConfigs = config.getConfigDetails();
+        var propertySet = new PropertySet();
+        propertySet.setPropertyFile(propertyFile);
+        propertySet.setConfigDetails(configDetails);
+        if (nonNull(config)) {
+            propertySet.setPropertyFileDefault(config.getPropertyFile());
+            propertySet.setConfigDetailsDefault(config.getConfigDetails());
         }
-        return fileConfigs;
-    }
+        propertySet.initialize();
 
-    private FileInterpreter loadValueFile(TemplateConfig config) throws IOException {
-
-        var fileLoader = new MulecodeFileUtils();
-        String contentLoaded;
-        String fileType;
-
-        if (StringUtils.isNotBlank(propertyFile)) {
-
-            contentLoaded = fileLoader.loadFileAsString(
-                    propertyFile
-            );
-            fileType = fileLoader.fileExtension(
-                    propertyFile
-            );
-
-        } else {
-
-            contentLoaded = fileLoader.loadFileAsString(
-                    config.getPropertyFile()
-            );
-            fileType = fileLoader.fileExtension(
-                    config.getPropertyFile()
-            );
-
-        }
-
-        var valueFile = new FileInterpreterFactory()
-                .get(fileType);
-
-        valueFile.loadContent(contentLoaded);
-
-        return valueFile;
+        var templateService = new TemplateService(propertySet);
+        templateService.templateFile();
     }
 
     public String getPropertyFile() {

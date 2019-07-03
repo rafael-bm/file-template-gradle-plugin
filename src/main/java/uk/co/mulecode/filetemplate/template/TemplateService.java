@@ -2,24 +2,23 @@ package uk.co.mulecode.filetemplate.template;
 
 import org.apache.commons.lang3.StringUtils;
 import uk.co.mulecode.filetemplate.file.MulecodeFileUtils;
-import uk.co.mulecode.filetemplate.interpreter.FileInterpreter;
 import uk.co.mulecode.filetemplate.plugin.model.TemplateData;
 import uk.co.mulecode.filetemplate.plugin.model.TemplateDataItem;
+import uk.co.mulecode.filetemplate.property.PropertySet;
 
 import java.io.IOException;
-import java.util.List;
 
 public class TemplateService {
 
-    private final FileInterpreter valueFile;
+    private final PropertySet propertySet;
 
-    public TemplateService(FileInterpreter valueFile) {
-        this.valueFile = valueFile;
+    public TemplateService(PropertySet propertySet) {
+        this.propertySet = propertySet;
     }
 
-    public void templateFile(List<TemplateData> templates) throws IOException {
+    public void templateFile() throws IOException {
 
-        for (TemplateData template : templates) {
+        for (TemplateData template : propertySet.getTemplateDetails()) {
 
             templateFile(template);
         }
@@ -33,14 +32,10 @@ public class TemplateService {
 
         for (TemplateDataItem replace : template.getReplaces()) {
 
-            var valueToReplace = valueFile.getProperty(
-                    replace.getPropertyPath()
-            );
-
             templateFile = StringUtils.replace(
                     templateFile,
                     replace.getPlaceHolder(),
-                    valueToReplace
+                    propertySet.getReplaceValue(replace)
             );
 
         }

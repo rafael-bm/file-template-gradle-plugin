@@ -11,7 +11,7 @@ plugins {
 
 scmVersion {
 
-    versionIncrementer("incrementMajor")
+    versionIncrementer("incrementMinor")
 
     ignoreUncommittedChanges = true
     useHighestVersion = true
@@ -37,6 +37,7 @@ repositories {
 
 dependencies {
 
+    implementation("org.apache.commons:commons-collections4:4.0")
     implementation("org.apache.commons:commons-lang3:3.9")
     implementation("org.json:json:20180813")
     implementation("com.jayway.jsonpath:json-path:2.4.0")
