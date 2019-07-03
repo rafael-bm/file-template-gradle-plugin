@@ -6,14 +6,14 @@ import org.junit.Test;
 import uk.co.mulecode.filetemplate.interpreter.impl.JsonFileInterpreter;
 import uk.co.mulecode.filetemplate.plugin.model.TemplateData;
 import uk.co.mulecode.filetemplate.plugin.model.TemplateDataItem;
+import uk.co.mulecode.filetemplate.property.PropertySet;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -28,18 +28,20 @@ public class TemplateServiceTest {
         var oneTemplateConfiguration = givenMainValueFileConfig(
                 templateFilePath,
                 destinationFilePath,
-                Map.of(
-                        "{{COUNTRY}}", "uk.country",
-                        "{{CITY}}", "uk.city"
+                List.of(
+                        new TemplateDataItem("{{COUNTRY}}", "uk.country"),
+                        new TemplateDataItem("{{CITY}}", "uk.city")
                 )
         );
 
         var valueFilePath = "src/test/resources/valuesSample.json";
 
-        whenExecuteTemplateFile(
-                oneTemplateConfiguration,
-                valueFilePath
-        );
+        PropertySet propertySet = new PropertySet();
+        propertySet.setPropertyFile(valueFilePath);
+        propertySet.setConfigDetails(List.of(oneTemplateConfiguration));
+        propertySet.initialize();
+
+        whenExecuteTemplateFile(propertySet);
 
         var createdFile = thenCreatedFileMustExists(destinationFilePath);
         thenPropertyMustExists(createdFile, "country", "united kingdom");
@@ -52,11 +54,10 @@ public class TemplateServiceTest {
         MatcherAssert.assertThat(jsonInterpreterReader.getProperty(propertyPath), is(expectedValue));
     }
 
-    private void whenExecuteTemplateFile(TemplateData oneTemplateConfiguration, String valueFilePath) throws IOException {
+    private void whenExecuteTemplateFile(PropertySet propertySetService) throws IOException {
 
-        var valueFileFileInterpreter = loadOneJsonInterpreter(valueFilePath);
-        var templateService = new TemplateService(valueFileFileInterpreter);
-        templateService.templateFile(oneTemplateConfiguration);
+        var templateService = new TemplateService(propertySetService);
+        templateService.templateFile();
     }
 
     private JsonFileInterpreter loadOneJsonInterpreter(String jsonFilePath) throws IOException {
@@ -76,15 +77,12 @@ public class TemplateServiceTest {
         ).getAbsolutePath();
     }
 
-    private TemplateData givenMainValueFileConfig(String templateFilePath, String destinationFilePath, Map<String, String> templates) {
+    private TemplateData givenMainValueFileConfig(String templateFilePath, String destinationFilePath, List<TemplateDataItem> templates) {
 
         return new TemplateData(
                 templateFilePath,
                 destinationFilePath,
-                templates.entrySet()
-                        .stream()
-                        .map(e -> new TemplateDataItem(e.getKey(), e.getValue()))
-                        .collect(Collectors.toList())
+                templates
         );
     }
 
